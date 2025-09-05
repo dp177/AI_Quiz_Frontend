@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getQuizById, submitQuiz, retryQuiz } from "../api/api";
+import { Loader, HelpCircle, CheckCircle, XCircle, ArrowRight, RefreshCw } from "lucide-react";
 
 const AttemptQuiz = () => {
   const { quizId } = useParams();
+  const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
   const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitted, setSubmitted] = useState(false);
   const [resultMap, setResultMap] = useState({});
-  const [hintVisible, setHintVisible] = useState({}); // for toggling hints
+  const [hintVisible, setHintVisible] = useState({});
 
   useEffect(() => {
     const fetchQuiz = async () => {
       try {
+        setLoading(true);
         const res = await getQuizById(quizId);
         setQuiz(res.data);
         setResponses([]);
@@ -40,15 +43,10 @@ const AttemptQuiz = () => {
 
   const handleSubmit = async () => {
     try {
-      const payload = {
-        quizId,
-        responses,
-      };
-
+      const payload = { quizId, responses };
       const res = await submitQuiz(payload);
       alert(`Quiz submitted! You scored ${res.data.score}/${quiz.maxScore}`);
       setSubmitted(true);
-
       const map = {};
       res.data.result.forEach((r) => {
         map[r.questionId] = r;
@@ -62,17 +60,9 @@ const AttemptQuiz = () => {
 
   const handleRetry = async () => {
     try {
-      const res = await retryQuiz({ quizId });
-
-      setQuiz(null);
-      setResponses([]);
-      setSubmitted(false);
-      setResultMap({});
-      setHintVisible({});
       setLoading(true);
-
-      const newQuiz = await getQuizById(res.data.quizId);
-      setQuiz(newQuiz.data);
+      const res = await retryQuiz({ quizId });
+      navigate(`/attempt/${res.data.quizId}`); // Navigate to new quiz attempt
     } catch (err) {
       console.error("Retry failed:", err);
       alert("Retry failed.");
@@ -82,124 +72,116 @@ const AttemptQuiz = () => {
   };
 
   const toggleHint = (questionId) => {
-    setHintVisible((prev) => ({
-      ...prev,
-      [questionId]: !prev[questionId],
-    }));
+    setHintVisible((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
   };
 
-  if (loading) return <div className="p-6 text-center text-lg">Loading...</div>;
+  if (loading) return (
+    <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <Loader className="animate-spin h-12 w-12 text-gray-600" />
+    </div>
+  );
   if (!quiz) return <div className="p-6 text-center text-red-600">Quiz not found.</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <h2 className="text-3xl font-bold text-center text-indigo-700 mb-8">{quiz.title}</h2>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <header className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">{quiz.title}</h1>
+          <p className="mt-4 text-xl text-gray-600">
+            {submitted ? "Review your answers below." : "Select the best option for each question."}
+          </p>
+        </header>
 
-      {quiz.questions.map((q, i) => {
-        const resultObj = resultMap[q.questionId];
-        const userAnswer = submitted
-          ? resultObj?.userResponse
-          : responses.find((r) => r.questionId === q.questionId)?.userResponse;
+        <div className="space-y-8">
+          {quiz.questions.map((q, i) => {
+            const resultObj = resultMap[q.questionId];
+            const userAnswer = submitted ? resultObj?.userResponse : responses.find((r) => r.questionId === q.questionId)?.userResponse;
+            const correctAnswer = resultObj?.correctAnswer;
+            const isCorrect = resultObj?.isCorrect;
+            const showHint = hintVisible[q.questionId];
 
-        const correctAnswer = resultObj?.correctAnswer;
-        const isCorrect = resultObj?.isCorrect;
-        const showHint = hintVisible[q.questionId];
+            return (
+              <div key={q.questionId} className="bg-white shadow-md rounded-lg p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="text-lg font-semibold text-gray-800">
+                    {i + 1}. {q.question}
+                  </p>
+                  <button onClick={() => toggleHint(q.questionId)} className="flex items-center text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                    <HelpCircle className="mr-1 h-5 w-5" />
+                    Hint
+                  </button>
+                </div>
 
-        return (
-          <div
-            key={q.questionId}
-            className="bg-white shadow-md rounded-xl p-6 border border-gray-200 transition duration-300 hover:shadow-lg"
-          >
-            <div className="flex justify-between items-start">
-              <p className="text-lg font-semibold mb-3 text-gray-800">
-                {i + 1}. {q.question}
-              </p>
-              <button
-                onClick={() => toggleHint(q.questionId)}
-                className="text-sm bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 transition"
-              >
-                {showHint ? "Hide Hint" : "Show Hint"}
-              </button>
-            </div>
+                {showHint && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-4 mb-4" role="alert">
+                    <p className="font-bold">Hints</p>
+                    <p>{q.hint1}</p>
+                    <p>{q.hint2}</p>
+                  </div>
+                )}
 
-            {showHint && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-3 text-sm text-gray-800">
-                <p><strong>Hint 1:</strong> {q.hint1}</p>
-                <p><strong>Hint 2:</strong> {q.hint2}</p>
-              </div>
-            )}
+                <div className="space-y-3">
+                  {q.options.map((opt, idx) => {
+                    const optionLetter = String.fromCharCode(65 + idx);
+                    const isUserChoice = optionLetter === userAnswer;
 
-            <div className="space-y-2">
-              {q.options.map((opt, idx) => {
-                const optionLetter = String.fromCharCode(65 + idx);
-                const isUserChoice = optionLetter === userAnswer;
-
-                let optionStyle = "flex items-center px-4 py-2 rounded cursor-pointer transition";
-
-                if (submitted) {
-                  if (optionLetter === correctAnswer && isCorrect) {
-                    optionStyle += " bg-green-100 text-green-700 font-medium";
-                  } else if (isUserChoice && !isCorrect) {
-                    optionStyle += " bg-red-100 text-red-700";
-                  } else {
-                    optionStyle += " hover:bg-gray-50";
-                  }
-                } else {
-                  optionStyle += " hover:bg-blue-50";
-                }
-
-                return (
-                  <label key={idx} className={optionStyle}>
-                    <input
-                      type="radio"
-                      name={q.questionId}
-                      value={optionLetter}
-                      checked={isUserChoice}
-                      onChange={() =>
-                        handleOptionChange(q.questionId, optionLetter)
+                    let optionStyle = "flex items-center p-3 rounded-lg border cursor-pointer transition ";
+                    if (submitted) {
+                      if (optionLetter === correctAnswer) {
+                        optionStyle += "bg-green-100 border-green-300 text-green-800";
+                      } else if (isUserChoice && !isCorrect) {
+                        optionStyle += "bg-red-100 border-red-300 text-red-800";
+                      } else {
+                        optionStyle += "bg-gray-50 border-gray-200 text-gray-700";
                       }
-                      className="mr-2"
-                      disabled={submitted}
-                    />
-                    {optionLetter}. {opt}
-                  </label>
-                );
-              })}
-            </div>
+                    } else {
+                      optionStyle += isUserChoice ? "bg-gray-200 border-gray-400" : "bg-white border-gray-300 hover:bg-gray-100";
+                    }
 
-            {submitted && (
-              <div className="mt-3">
-                {isCorrect ? (
-                  <span className="text-green-600 font-semibold">Correct ✅</span>
-                ) : (
-                  <span className="text-red-600 font-semibold">
-                    Incorrect ❌ &nbsp;
-                    <span className="text-gray-700">
-                      (Correct: {correctAnswer})
-                    </span>
-                  </span>
+                    return (
+                      <label key={idx} className={optionStyle}>
+                        <input type="radio" name={q.questionId} value={optionLetter} checked={isUserChoice} onChange={() => handleOptionChange(q.questionId, optionLetter)} className="hidden" disabled={submitted}/>
+                        <span className="font-mono mr-3">{optionLetter}.</span>
+                        <span>{opt}</span>
+                        {submitted && optionLetter === correctAnswer && <CheckCircle className="ml-auto h-5 w-5 text-green-600" />}
+                        {submitted && isUserChoice && !isCorrect && <XCircle className="ml-auto h-5 w-5 text-red-600" />}
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {submitted && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    {isCorrect ? (
+                      <div className="flex items-center text-green-600 font-semibold">
+                        <CheckCircle className="mr-2 h-5 w-5" />
+                        Correct
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-red-600 font-semibold">
+                        <XCircle className="mr-2 h-5 w-5" />
+                        Incorrect (Correct Answer: {correctAnswer})
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
 
-      {!submitted ? (
-        <button
-          onClick={handleSubmit}
-          className="w-full sm:w-auto mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition"
-        >
-          Submit Quiz
-        </button>
-      ) : (
-        <button
-          onClick={handleRetry}
-          className="w-full sm:w-auto mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition"
-        >
-          Retry Quiz
-        </button>
-      )}
+        <div className="mt-12 flex justify-center">
+          {!submitted ? (
+            <button onClick={handleSubmit} className="w-full md:w-auto flex justify-center items-center py-3 px-8 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-gray-800 hover:bg-gray-900">
+              Submit Quiz <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          ) : (
+            <button onClick={handleRetry} disabled={loading} className="w-full md:w-auto flex justify-center items-center py-3 px-8 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-green-600 hover:bg-green-700">
+              {loading ? <><Loader className="animate-spin mr-2 h-5 w-5" /> Retrying...</> : <>Retry Quiz <RefreshCw className="ml-2 h-5 w-5" /></>}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

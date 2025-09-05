@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { generateQuiz } from "../api/api";
+import { Book, Tag, Hash, Star, Zap, Loader, ArrowRight } from "lucide-react";
 
 const GenerateQuiz = () => {
   const [form, setForm] = useState({
@@ -28,9 +29,9 @@ const GenerateQuiz = () => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setQuiz(null);
     try {
       const res = await generateQuiz(form);
-
       const transformed = {
         ...res.data,
         questions: res.data.questions.map((q, i) => ({
@@ -42,124 +43,92 @@ const GenerateQuiz = () => {
           hint2: q.hint2 || "",
         })),
       };
-
       setQuiz(transformed);
-      localStorage.setItem("quizId", transformed.quizId); // Only store quizId in localStorage
+      localStorage.setItem("quizId", transformed.quizId);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to generate quiz");
     }
     setLoading(false);
   };
 
- const handleAttemptQuiz = () => {
-  navigate(`/attempt/${quiz.quizId}`);
-};
-
+  const handleAttemptQuiz = () => {
+    navigate(`/attempt/${quiz.quizId}`);
+  };
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h2 className="text-2xl font-semibold mb-4">Generate Quiz</h2>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <header className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight sm:text-5xl">
+            Generate a New Quiz
+          </h1>
+          <p className="mt-4 text-xl text-gray-600">
+            Customize your quiz by filling out the details below.
+          </p>
+        </header>
 
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 bg-white shadow-md rounded-lg p-6"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-1 text-sm font-medium">Grade</label>
-            <input
-              type="text"
-              name="grade"
-              value={form.grade}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">Subject</label>
-            <input
-              type="text"
-              name="subject"
-              value={form.subject}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">Total Questions</label>
-            <input
-              type="number"
-              name="totalQuestions"
-              value={form.totalQuestions}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-1 text-sm font-medium">Max Score</label>
-            <input
-              type="number"
-              name="maxScore"
-              value={form.maxScore}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              required
-            />
-          </div>
-          <div className="col-span-2">
-            <label className="block mb-1 text-sm font-medium">Difficulty</label>
-            <select
-              name="difficulty"
-              value={form.difficulty}
-              onChange={handleChange}
-              className="w-full border rounded px-3 py-2"
-              required
-            >
-              <option value="EASY">EASY</option>
-              <option value="MEDIUM">MEDIUM</option>
-              <option value="HARD">HARD</option>
-            </select>
-          </div>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
-        >
-          {loading ? "Generating..." : "Generate"}
-        </button>
-      </form>
-
-      {error && <p className="text-red-500 mt-4">{error}</p>}
-
-      {quiz && (
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold mb-2">Generated Quiz</h3>
-          {quiz.questions.map((q, i) => (
-            <div key={q.questionId} className="mb-4 border-b pb-2">
-              <p className="font-medium mb-1">
-                Q{i + 1}: {q.question}
-              </p>
-              <ul className="ml-6 list-disc">
-                {q.options.map((opt, idx) => (
-                  <li key={idx}>{String.fromCharCode(65 + idx)}. {opt}</li>
-                ))}
-              </ul>
+        <div className="bg-white p-8 rounded-lg shadow-md">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="relative">
+                <Book className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input type="text" name="grade" value={form.grade} onChange={handleChange} placeholder="Grade (e.g., 10th)" required className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400" />
+              </div>
+              <div className="relative">
+                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input type="text" name="subject" value={form.subject} onChange={handleChange} placeholder="Subject (e.g., Math)" required className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400" />
+              </div>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input type="number" name="totalQuestions" value={form.totalQuestions} onChange={handleChange} placeholder="Total Questions" required className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400" />
+              </div>
+              <div className="relative">
+                <Star className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input type="number" name="maxScore" value={form.maxScore} onChange={handleChange} placeholder="Max Score" required className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400" />
+              </div>
+              <div className="relative col-span-1 md:col-span-2">
+                <Zap className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <select name="difficulty" value={form.difficulty} onChange={handleChange} required className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-400">
+                  <option value="EASY">Easy</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HARD">Hard</option>
+                </select>
+              </div>
             </div>
-          ))}
-
-          <button
-            onClick={handleAttemptQuiz}
-            className="mt-4 bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700"
-          >
-            Attempt Quiz Now
-          </button>
+            <button type="submit" disabled={loading} className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+              {loading ? <><Loader className="animate-spin mr-2 h-5 w-5" /> Generating...</> : "Generate Quiz"}
+            </button>
+          </form>
         </div>
-      )}
+
+        {error && <div className="mt-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg text-center"><p>{error}</p></div>}
+
+        {quiz && (
+          <div className="mt-8 bg-white p-8 rounded-lg shadow-md">
+            <h3 className="text-2xl font-bold text-gray-900 mb-6">Generated Quiz Questions</h3>
+            <div className="space-y-6">
+              {quiz.questions.map((q, i) => (
+                <div key={q.questionId} className="border-b border-gray-200 pb-4">
+                  <p className="font-semibold text-gray-800 mb-2">
+                    Q{i + 1}: {q.question}
+                  </p>
+                  <ul className="space-y-1 ml-2">
+                    {q.options.map((opt, idx) => (
+                      <li key={idx} className="flex items-center text-gray-600">
+                        <span className="font-mono mr-2 text-gray-500">{String.fromCharCode(65 + idx)}.</span>
+                        {opt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <button onClick={handleAttemptQuiz} className="mt-8 w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+              Attempt Quiz Now <ArrowRight className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
